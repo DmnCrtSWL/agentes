@@ -86,38 +86,24 @@ const handleSendMessage = async (text) => {
   // Add to current agent's messages
   activeAgent.value.messages.push(newMsg);
 
-  // Si es el Agente 1, enviamos a n8n
-  if (currentAgentId === 1) {
-    
-    // Simular estado "delivered" rápido
-    setTimeout(() => { newMsg.status = 'delivered'; }, 500);
+  // Enviamos a n8n para TODOS los agentes
+  
+  // Simular estado "delivered" rápido
+  setTimeout(() => { newMsg.status = 'delivered'; }, 500);
 
-    // Llamada a API real
-    const replyText = await sendMessageToN8N(text, currentAgentId);
+  // Llamada a API real
+  const replyText = await sendMessageToN8N(text, currentAgentId);
 
-    // Agregar respuesta
-    activeAgent.value.messages.push({
-      id: Date.now() + 1,
-      text: replyText,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isMine: false,
-      status: 'read'
-    });
-    
-    newMsg.status = 'read';
-
-  } else {
-    // Lógica simulada para otros agentes (por ahora)
-    setTimeout(() => {
-      activeAgent.value.messages.push({
-        id: Date.now() + 1,
-        text: `Respuesta simulada del ${activeAgent.value.name}: Recibido.`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isMine: false,
-        status: 'read'
-      });
-    }, 1500);
-  }
+  // Agregar respuesta
+  activeAgent.value.messages.push({
+    id: Date.now() + 1,
+    text: replyText,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    isMine: false,
+    status: 'read'
+  });
+  
+  newMsg.status = 'read';
 };
 </script>
 
