@@ -6,10 +6,6 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 
-/* Force include styles for Vite production build */
-import '@fullcalendar/core/vdom'; // Important for Vue 3
-
-
 // Estado del modal de detalles
 const selectedEvent = ref(null);
 const showModal = ref(false);
@@ -37,13 +33,12 @@ const calendarOptions = ref({
   headerToolbar: {
     left: 'prev,next today',
     center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    right: 'dayGridMonth,timeGridWeek'
   },
   slotMinTime: '08:00:00',
   slotMaxTime: '20:00:00',
   allDaySlot: false,
-  height: 'auto', // Responsive height
-  contentHeight: 'auto',
+  height: '100%', // Use 100% of the container
   expandRows: true,
   stickyHeaderDates: true,
   nowIndicator: true,
