@@ -191,6 +191,36 @@ app.get('/api', (req, res) => {
     res.send('API de Citas Médicas Funcionando 🚀');
 });
 
+// Ruta de DEBUG para probar envío de correos
+app.get('/api/debug/email', async (req, res) => {
+    const testEmail = req.query.to || process.env.EMAIL_USER; // Enviar a sí mismo por defecto
+    if (!testEmail) return res.status(400).json({ error: 'Falta parámetro ?to=email' });
+
+    try {
+        const info = await transporter.sendMail({
+            from: `"Test Debug" <${process.env.EMAIL_USER}>`,
+            to: testEmail,
+            subject: '🧪 Test de Correo Vercel',
+            text: 'Si ves esto, el envío de correos funciona correctamente desde Vercel.',
+            html: '<b>Si ves esto, el envío de correos funciona correctamente desde Vercel.</b>'
+        });
+        res.json({ success: true, messageId: info.messageId, accepted: info.accepted });
+    } catch (error) {
+        console.error('Debug Email Error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            stack: error.stack,
+            config: {
+                host: 'smtp.ionos.com',
+                port: 587,
+                user: process.env.EMAIL_USER ? 'Configurado' : 'Faltante',
+                pass: process.env.EMAIL_PASS ? 'Configurado' : 'Faltante'
+            }
+        });
+    }
+});
+
 // Ruta: Actualizar estado de una cita
 app.put('/api/citas/:id/status', async (req, res) => {
     const { id } = req.params;
