@@ -143,8 +143,7 @@ const sendConfirmationEmail = async (to, cita) => {
                     </div>
 
                     <div style="text-align: center; margin-top: 30px;">
-                         <a href="#" style="background-color: #0d9488; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Ver mi cita en línea</a>
-                         <p style="font-size: 12px; color: #888; margin-top: 15px;">Si necesitas cancelar o reprogramar, por favor contáctanos con al menos 24 horas de anticipación.</p>
+                         <p style="font-size: 12px; color: #888; margin-top: 15px;">Si necesitas cancelar o reprogramar, por favor contáctanos con al menos 48 horas de anticipación.</p>
                     </div>
                 </div>
 
@@ -175,11 +174,13 @@ const sendReminderEmail = async (to, cita) => {
     if (!process.env.EMAIL_USER) return;
 
     const fechaFormat = new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const frontendUrl = process.env.FRONTEND_URL || 'https://agentes-theta.vercel.app';
+    const confirmLink = `${frontendUrl}/?confirmar_id=${cita.id}`;
 
     const mailOptions = {
         from: `"Clínica Dr. Quiroz" <${process.env.EMAIL_USER}>`,
         to: to,
-        subject: '⏰ Recordatorio: Tu cita es en 48 horas',
+        subject: '⏰ Recordatorio: Tu cita es en 48 horas - ¡Confirma tu asistencia!',
         html: `
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #f0f0f0;">
                 
@@ -215,8 +216,9 @@ const sendReminderEmail = async (to, cita) => {
                     </div>
 
                     <div style="text-align: center; margin-top: 30px;">
-                         <p style="font-size: 14px; color: #555;">Por favor llega 10 minutos antes de tu hora programada.</p>
-                         <p style="font-size: 12px; color: #888; margin-top: 15px;">Si necesitas cancelar o reprogramar, contáctanos lo antes posible.</p>
+                         <p style="font-size: 16px; color: #333; margin-bottom: 15px;"><strong>¿Podrás asistir?</strong></p>
+                         <a href="${confirmLink}" style="background-color: #d97706; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(217, 119, 6, 0.3);">✅ CONFIRMAR SI ASISTIRÉ</a>
+                         <p style="font-size: 12px; color: #888; margin-top: 20px;">Si necesitas cancelar o reprogramar, contáctanos lo antes posible.</p>
                     </div>
                 </div>
 
@@ -230,11 +232,13 @@ const sendReminderEmail = async (to, cita) => {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`⏰ Recordatorio enviado a ${to}`);
+        console.log(`📧 Correo enviado a ${to}`);
     } catch (error) {
-        console.error('❌ Error enviando recordatorio:', error);
+        console.error('❌ Error enviando correo:', error);
     }
 };
+
+
 
 // Ruta: Crear nueva cita (Incluye envío de correo)
 app.post('/api/citas', async (req, res) => {

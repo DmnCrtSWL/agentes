@@ -1,5 +1,4 @@
-<script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import ChatHeader from './components/ChatHeader.vue';
 import MessageList from './components/MessageList.vue';
 import ChatInput from './components/ChatInput.vue';
@@ -13,7 +12,9 @@ const showCancelaciones = ref(false);
 const selectedCita = ref(null);
 
 const agents = ref({
-  1: {
+   // ... content remains same, handled by diff context if possible, but simplest is to keep imports and setup
+   // Actually simpler to just replace the top block.
+   1: {
     id: 1,
     name: 'Agente 1',
     avatar: '/agent-service.png',
@@ -65,6 +66,36 @@ const getSessionId = () => {
 };
 
 const sessionId = ref(getSessionId());
+
+// Lógica de inicio: Revisar si venimos de un correo de confirmación
+onMounted(async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const confirmId = urlParams.get('confirmar_id');
+
+  if (confirmId) {
+    console.log('🔗 Link de confirmación detectado para Cita ID:', confirmId);
+    try {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        const citas = Array.isArray(data) ? data : (data.data || []);
+        
+        // Buscar la cita específica
+        const citaEncontrada = citas.find(c => c.id == confirmId);
+
+        if (citaEncontrada) {
+            selectedCita.value = citaEncontrada;
+            // Limpiamos la URL para que no quede "sucia"
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            console.warn('Cita no encontrada en la lista activa');
+            // Opcional: Mostrar alerta
+        }
+    } catch (e) {
+        console.error('Error cargando cita por ID:', e);
+    }
+  }
+});
 
 const handleSelectAgent = async (id) => {
   if (id === 'citas') {
