@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 // URL del API de Backend (Express)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
@@ -8,19 +8,24 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas
 const citas = ref([]);
 const loading = ref(true);
 const error = ref(null);
+let pollingInterval = null;
 
-const fetchCitas = async () => {
+const fetchCitas = async (isAutoRefresh = false) => {
   try {
-    loading.value = true;
+    // Si es auto-refresh, no mostramos el spinner de carga completa para no molestar
+    if (!isAutoRefresh) loading.value = true;
+    
     const response = await fetch(API_URL);
     if (!response.ok) throw new Error('Error al obtener citas');
     
     // Asumimos que n8n devuelve un array de objetos o un objeto { data: [...] }
     const data = await response.json();
     citas.value = Array.isArray(data) ? data : (data.data || []);
+    error.value = null; // Limpiar errores si tuvo éxito
   } catch (e) {
     console.error(e);
-    error.value = "No se pudieron cargar las citas. Verifica tu conexión.";
+    // Solo mostramos error visual si no es una actualización automática silenciosa
+    if (!isAutoRefresh) error.value = "No se pudieron cargar las citas. Verifica tu conexión.";
   } finally {
     loading.value = false;
   }
@@ -36,6 +41,15 @@ const formatDate = (isoString) => {
 
 onMounted(() => {
   fetchCitas();
+  // Configurar actualización automática cada 60 segundos (60000 ms)
+  pollingInterval = setInterval(() => {
+    fetchCitas(true);
+  }, 60000);
+});
+
+onUnmounted(() => {
+  // Limpiar el intervalo al salir para evitar fugas de memoria
+  if (pollingInterval) clearInterval(pollingInterval);
 });
 </script>
 
@@ -45,17 +59,34 @@ onMounted(() => {
     <header class="bg-white px-6 py-5 flex items-center justify-between border-b border-gray-200 shadow-sm sticky top-0 z-20">
       <div>
         <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Agenda de Citas</h1>
-        <p class="text-xs text-gray-500 mt-1">Dr. Rubén Quiroz - Cardiología</p>
+        <div class="flex items-center gap-2 mt-1">
+          <p class="text-xs text-gray-500">Dr. Rubén Quiroz - Cardiología</p>
+          <span v-if="loading" class="text-xs text-teal-600 animate-pulse font-medium">• Actualizando...</span>
+        </div>
       </div>
-      <button 
-        @click="$emit('back')" 
-        class="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm active:translate-y-0.5"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 group-hover:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        Volver al Chat
-      </button>
+      
+      <div class="flex items-center gap-3">
+        <!-- Botón Actualizar Manual -->
+        <button 
+          @click="fetchCitas(false)" 
+          class="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all active:rotate-180 duration-300"
+          title="Actualizar lista"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+
+        <button 
+          @click="$emit('back')" 
+          class="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm active:translate-y-0.5"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 group-hover:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Volver al Chat
+        </button>
+      </div>
     </header>
 
     <!-- Content -->
