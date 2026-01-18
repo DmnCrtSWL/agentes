@@ -3,10 +3,8 @@ import { ref, computed } from 'vue';
 import ChatHeader from './components/ChatHeader.vue';
 import MessageList from './components/MessageList.vue';
 import ChatInput from './components/ChatInput.vue';
-import CalendarView from './components/CalendarView.vue';
 
 const activeAgentId = ref(1);
-const showCalendar = ref(false); // State to toggle calendar view
 
 const agents = ref({
   1: {
@@ -116,17 +114,7 @@ const handleSendMessage = async (text) => {
 
 <template>
   <div class="app-container">
-    <!-- VISTA DE CALENDARIO -->
-    <CalendarView 
-      v-if="showCalendar" 
-      @back="showCalendar = false"
-    />
-
-    <!-- VISTA DE CHAT -->
-    <template v-else>
-      <!-- Usamos v-if aquí también para seguridad extra, aunque el v-else ya maneja la lógica -->
       <ChatHeader 
-        v-if="activeAgent"
         :contact-name="activeAgent.name" 
         :status="'En línea'"
         :avatar-url="activeAgent.avatar"
@@ -134,12 +122,10 @@ const handleSendMessage = async (text) => {
       />
       
       <MessageList 
-        v-if="activeAgent"
         :messages="activeAgent.messages" 
       />
       
-      <ChatInput v-if="activeAgent" @sendMessage="handleSendMessage" />
-    </template>
+      <ChatInput @sendMessage="handleSendMessage" />
   </div>
 </template>
 
