@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --wa-teal: #008069;
   --wa-dark-teal: #128C7E;

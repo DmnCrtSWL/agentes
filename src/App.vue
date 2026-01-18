@@ -3,8 +3,10 @@ import { ref, computed } from 'vue';
 import ChatHeader from './components/ChatHeader.vue';
 import MessageList from './components/MessageList.vue';
 import ChatInput from './components/ChatInput.vue';
+import CitasList from './components/CitasList.vue';
 
 const activeAgentId = ref(1);
+const showCitas = ref(false);
 
 const agents = ref({
   1: {
@@ -52,11 +54,11 @@ console.log(`Usando webhook de: ${import.meta.env.DEV ? 'PRUEBA' : 'PRODUCCIÓN'
 const sessionId = ref('session-' + Date.now());
 
 const handleSelectAgent = (id) => {
-  if (id === 'calendar') {
-    showCalendar.value = true;
+  if (id === 'citas') {
+    showCitas.value = true;
   } else {
     activeAgentId.value = id;
-    showCalendar.value = false;
+    showCitas.value = false;
   }
 };
 
@@ -121,6 +123,12 @@ const handleSendMessage = async (text) => {
 
 <template>
   <div class="app-container">
+    <CitasList 
+      v-if="showCitas" 
+      @back="showCitas = false"
+    />
+
+    <template v-else>
       <ChatHeader 
         :contact-name="activeAgent.name" 
         :status="'En línea'"
@@ -133,6 +141,7 @@ const handleSendMessage = async (text) => {
       />
       
       <ChatInput @sendMessage="handleSendMessage" />
+    </template>
   </div>
 </template>
 
