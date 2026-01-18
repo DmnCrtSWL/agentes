@@ -38,11 +38,43 @@ const agents = ref({
 
 const activeAgent = computed(() => agents.value[activeAgentId.value]);
 
+// -------------------------------------------------------------
+// CONFIGURACIÓN DE N8N
+// Reemplaza esta URL con la Production URL de tu Webhook de n8n
+const N8N_WEBHOOK_URL = 'https://bambu-cloud.app.n8n.cloud/webhook-test/agente/servicio-cliente'; 
+// -------------------------------------------------------------
+
 const handleSelectAgent = (id) => {
   activeAgentId.value = id;
 };
 
-const handleSendMessage = (text) => {
+const sendMessageToN8N = async (text, agentId) => {
+  try {
+    const response = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: text,
+        agentId: agentId,
+        sessionId: 'session-' + Date.now() // Puedes mejorar esto con un ID persistente
+      })
+    });
+
+    if (!response.ok) throw new Error('Network response was not ok');
+
+    const data = await response.json();
+    return data.reply || data.output || "Lo siento, hubo un error procesando tu mensaje."; // Ajusta según lo que devuelva tu n8n
+  } catch (error) {
+    console.error("Error conectando con n8n:", error);
+    return "Error de conexión con el servidor.";
+  }
+};
+
+const handleSendMessage = async (text) => {
+  const currentAgentId = activeAgentId.value;
+  
   const newMsg = {
     id: Date.now(),
     text: text,
@@ -54,20 +86,38 @@ const handleSendMessage = (text) => {
   // Add to current agent's messages
   activeAgent.value.messages.push(newMsg);
 
-  // Simulate generic response after a delay specific to current agent
-  setTimeout(() => {
-    // Update status logic if needed (skipping specific status update for simplicity or can implement by finding msg)
+  // Si es el Agente 1, enviamos a n8n
+  if (currentAgentId === 1) {
     
+    // Simular estado "delivered" rápido
+    setTimeout(() => { newMsg.status = 'delivered'; }, 500);
+
+    // Llamada a API real
+    const replyText = await sendMessageToN8N(text, currentAgentId);
+
+    // Agregar respuesta
+    activeAgent.value.messages.push({
+      id: Date.now() + 1,
+      text: replyText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isMine: false,
+      status: 'read'
+    });
+    
+    newMsg.status = 'read';
+
+  } else {
+    // Lógica simulada para otros agentes (por ahora)
     setTimeout(() => {
       activeAgent.value.messages.push({
         id: Date.now() + 1,
-        text: `Respuesta del Agente: Recibido.`,
+        text: `Respuesta simulada del ${activeAgent.value.name}: Recibido.`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isMine: false,
         status: 'read'
       });
     }, 1500);
-  }, 500);
+  }
 };
 </script>
 
