@@ -141,5 +141,11 @@ const handleSendMessage = async (text) => {
 </template>
 
 <style>
-/* App specific global overrides or specific layout if needed not covered by main.css */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
 </style>
