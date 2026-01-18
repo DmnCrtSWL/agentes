@@ -1,3 +1,4 @@
+<script setup>
 import { ref, computed, onMounted } from 'vue';
 import ChatHeader from './components/ChatHeader.vue';
 import MessageList from './components/MessageList.vue';
