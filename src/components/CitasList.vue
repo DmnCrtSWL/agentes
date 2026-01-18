@@ -1,9 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 
-// URL del Workflow de n8n para LEER citas (GET)
-// Tienes que crear este workflow en n8n: Trigger "On Webhook (GET)" -> Postgres "Execute Query (SELECT * FROM citas)" -> Respond to Webhook
-const N8N_GET_CITAS_URL = 'https://bambu-cloud.app.n8n.cloud/webhook/obtener-citas'; 
+// URL del API de Backend (Express)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
 // Asegúrate de cambiar esto por tu URL real de producción/test
 
 const citas = ref([]);
@@ -13,7 +12,7 @@ const error = ref(null);
 const fetchCitas = async () => {
   try {
     loading.value = true;
-    const response = await fetch(N8N_GET_CITAS_URL);
+    const response = await fetch(API_URL);
     if (!response.ok) throw new Error('Error al obtener citas');
     
     // Asumimos que n8n devuelve un array de objetos o un objeto { data: [...] }
@@ -43,73 +42,126 @@ onMounted(() => {
 <template>
   <div class="h-full flex flex-col bg-gray-50 font-sans">
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-      <h1 class="text-xl font-bold text-gray-800">Citas Médicas</h1>
+    <header class="bg-white px-6 py-5 flex items-center justify-between border-b border-gray-200 shadow-sm sticky top-0 z-20">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Agenda de Citas</h1>
+        <p class="text-xs text-gray-500 mt-1">Dr. Rubén Quiroz - Cardiología</p>
+      </div>
       <button 
         @click="$emit('back')" 
-        class="text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors"
+        class="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm active:translate-y-0.5"
       >
-        Volver
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 group-hover:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Volver al Chat
       </button>
     </header>
 
     <!-- Content -->
-    <main class="flex-1 overflow-auto p-6">
+    <main class="flex-1 overflow-auto p-4 md:p-8">
       
       <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center items-center h-64">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+      <div v-if="loading" class="flex flex-col justify-center items-center h-full text-gray-400">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mb-3"></div>
+        <p class="text-sm font-medium animate-pulse">Cargando agenda...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="error" class="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200 text-center">
-        {{ error }}
-        <button @click="fetchCitas" class="block mx-auto mt-2 text-sm underline">Reintentar</button>
+      <div v-else-if="error" class="max-w-md mx-auto mt-10 bg-white p-6 rounded-xl shadow-lg border-l-4 border-red-500">
+        <div class="flex items-center gap-3 text-red-600 mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 class="font-bold text-lg">Error de Conexión</h3>
+        </div>
+        <p class="text-gray-600 mb-4">{{ error }}</p>
+        <button @click="fetchCitas" class="w-full py-2 bg-red-50 text-red-700 font-semibold rounded-lg hover:bg-red-100 transition-colors">
+          Intentar nuevamente
+        </button>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="citas.length === 0" class="text-center py-12 text-gray-500">
-        <p>No hay citas registradas aún.</p>
+      <div v-else-if="citas.length === 0" class="flex flex-col items-center justify-center h-full text-center">
+        <div class="bg-teal-50 p-6 rounded-full mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900">Sin citas programadas</h3>
+        <p class="text-gray-500 max-w-xs mt-2">Actualmente no hay citas registradas en el sistema para este periodo.</p>
       </div>
 
-      <!-- Table -->
-      <div v-else class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <!-- Modern Table -->
+      <div v-else class="bg-white rounded-2xl shadow-xl shadow-gray-100/50 border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm text-gray-600">
-            <thead class="bg-gray-50 text-xs uppercase font-semibold text-gray-500">
-              <tr>
-                <th class="px-6 py-3 border-b border-gray-100">Paciente</th>
-                <th class="px-6 py-3 border-b border-gray-100">Fecha</th>
-                <th class="px-6 py-3 border-b border-gray-100">Contacto</th>
-                <th class="px-6 py-3 border-b border-gray-100">Motivo</th>
-                <th class="px-6 py-3 border-b border-gray-100 text-right">Status</th>
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50/50 border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 font-bold">
+                <th class="px-6 py-4">Información del Paciente</th>
+                <th class="px-6 py-4">Fecha y Hora</th>
+                <th class="px-6 py-4">Detalles Médicos</th>
+                <th class="px-6 py-4 text-center">Estado</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr v-for="cita in citas" :key="cita.id" class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-4 font-medium text-gray-900">
-                  {{ cita.paciente_nombre }}
-                </td>
-                <td class="px-6 py-4 text-teal-700 font-medium">
-                  {{ formatDate(cita.fecha_hora) }}
-                </td>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="cita in citas" :key="cita.id" class="group hover:bg-teal-50/30 transition-colors duration-150">
+                <!-- Paciente Column -->
                 <td class="px-6 py-4">
-                  <div class="flex flex-col">
-                    <span v-if="cita.telefono">{{ cita.telefono }}</span>
-                    <span v-if="cita.email" class="text-xs text-gray-400">{{ cita.email }}</span>
+                  <div class="flex items-center">
+                    <div class="h-10 w-10 flex-shrink-0 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                      {{ cita.paciente_nombre.charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="ml-4">
+                      <div class="text-sm font-bold text-gray-900 group-hover:text-teal-700 transition-colors">{{ cita.paciente_nombre }}</div>
+                      <div class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <span v-if="cita.telefono">{{ cita.telefono }}</span>
+                        <span v-if="cita.email" class="text-gray-400">• {{ cita.email }}</span>
+                      </div>
+                    </div>
                   </div>
                 </td>
-                <td class="px-6 py-4 max-w-xs truncate" :title="cita.motivo">
-                  {{ cita.motivo || '-' }}
+
+                <!-- Fecha Column -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                   <div class="inline-flex flex-col">
+                    <span class="text-sm font-semibold text-gray-700">
+                      {{ new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' }) }}
+                    </span>
+                    <span class="text-xs font-mono text-gray-500 mt-1 bg-gray-100 px-2 py-0.5 rounded-md w-fit">
+                      {{ new Date(cita.fecha_hora).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }) }}
+                    </span>
+                  </div>
                 </td>
-                <td class="px-6 py-4 text-right">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+
+                <!-- Motivo Column -->
+                <td class="px-6 py-4">
+                  <div class="max-w-xs">
+                    <div class="text-sm text-gray-800 font-medium truncate" :title="cita.motivo">
+                      {{ cita.motivo || 'Sin motivo especificado' }}
+                    </div>
+                    <div v-if="cita.resumen_medico" class="mt-1 text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                      {{ cita.resumen_medico }}
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Status Column -->
+                <td class="px-6 py-4 text-center whitespace-nowrap">
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-2"></span>
                     Confirmada
                   </span>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+        
+        <!-- Footer / Pagination placeholder -->
+        <div class="bg-gray-50 border-t border-gray-100 px-6 py-3 text-xs text-gray-500 flex justify-between items-center">
+            <span>Mostrando últimos registros</span>
+            <span>Total: {{ citas.length }} citas</span>
         </div>
       </div>
     </main>
