@@ -91,8 +91,10 @@ const sendConfirmationEmail = async (to, cita) => {
     try {
         await transporter.sendMail(mailOptions);
         console.log(`📧 Correo enviado a ${to}`);
+        return true;
     } catch (error) {
         console.error('❌ Error enviando correo:', error);
+        return false;
     }
 };
 
@@ -152,8 +154,10 @@ const sendReminderEmail = async (to, cita) => {
     try {
         await transporter.sendMail(mailOptions);
         console.log(`📧 Correo enviado a ${to}`);
+        return true;
     } catch (error) {
         console.error('❌ Error enviando correo:', error);
+        return false;
     }
 };
 
@@ -226,7 +230,7 @@ app.post('/api/citas', async (req, res) => {
     try {
         const result = await pool.query(
             `INSERT INTO citas (paciente_nombre, telefono, email, fecha_hora, motivo, email_sent) 
-             VALUES ($1, $2, $3, $4, $5, TRUE) 
+             VALUES ($1, $2, $3, $4, $5, FALSE) 
              RETURNING *`,
             [paciente_nombre, telefono, email, fecha_hora, motivo]
         );
@@ -235,7 +239,10 @@ app.post('/api/citas', async (req, res) => {
         console.log('✅ Cita creada en DB:', nuevaCita.id);
 
         if (email) {
-            await sendConfirmationEmail(email, nuevaCita);
+            const sent = await sendConfirmationEmail(email, nuevaCita);
+            if (sent) {
+                await pool.query('UPDATE citas SET email_sent = TRUE WHERE id = $1', [nuevaCita.id]);
+            }
         }
 
         res.status(201).json(nuevaCita);
@@ -264,9 +271,11 @@ const processPendingEmails = async () => {
         if (confirmaciones.rows.length > 0) {
             console.log(`📬 Enviando ${confirmaciones.rows.length} confirmaciones...`);
             for (const cita of confirmaciones.rows) {
-                await sendConfirmationEmail(cita.email, cita);
-                await pool.query('UPDATE citas SET email_sent = TRUE WHERE id = $1', [cita.id]);
-                console.log(`✅ Confirmación enviada para Cita #${cita.id}`);
+                const sent = await sendConfirmationEmail(cita.email, cita);
+                if (sent) {
+                    await pool.query('UPDATE citas SET email_sent = TRUE WHERE id = $1', [cita.id]);
+                }
+                console.log(`✅ Confirmación procesada para Cita #${cita.id} (Enviado: ${sent})`);
             }
         }
 
@@ -284,9 +293,11 @@ const processPendingEmails = async () => {
         if (recordatorios.rows.length > 0) {
             console.log(`⏰ Enviando ${recordatorios.rows.length} recordatorios de 48h...`);
             for (const cita of recordatorios.rows) {
-                await sendReminderEmail(cita.email, cita);
-                await pool.query('UPDATE citas SET reminder_sent = TRUE WHERE id = $1', [cita.id]);
-                console.log(`✅ Recordatorio enviado para Cita #${cita.id}`);
+                const sent = await sendReminderEmail(cita.email, cita);
+                if (sent) {
+                    await pool.query('UPDATE citas SET reminder_sent = TRUE WHERE id = $1', [cita.id]);
+                }
+                console.log(`✅ Recordatorio procesado para Cita #${cita.id} (Enviado: ${sent})`);
             }
         }
 
