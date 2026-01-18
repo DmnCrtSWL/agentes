@@ -47,10 +47,17 @@ const N8N_TEST_URL = 'https://bambu-cloud.app.n8n.cloud/webhook-test/agente/serv
 const N8N_WEBHOOK_URL = import.meta.env.DEV ? N8N_TEST_URL : N8N_PROD_URL;
 
 console.log(`Usando webhook de: ${import.meta.env.DEV ? 'PRUEBA' : 'PRODUCCIÓN'}`);
-// -------------------------------------------------------------
+
+// Generar una sesión única al cargar la página
+const sessionId = ref('session-' + Date.now());
 
 const handleSelectAgent = (id) => {
-  activeAgentId.value = id;
+  if (id === 'calendar') {
+    showCalendar.value = true;
+  } else {
+    activeAgentId.value = id;
+    showCalendar.value = false;
+  }
 };
 
 const sendMessageToN8N = async (text, agentId) => {
@@ -63,7 +70,7 @@ const sendMessageToN8N = async (text, agentId) => {
       body: JSON.stringify({
         message: text,
         agentId: agentId,
-        sessionId: 'session-' + Date.now() // Puedes mejorar esto con un ID persistente
+        sessionId: sessionId.value // Usar la sesión persistente
       })
     });
 
