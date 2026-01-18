@@ -8,7 +8,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['back', 'confirm', 'reschedule', 'cancel']);
+const emit = defineEmits(['back', 'confirm', 'reschedule', 'cancel', 'navigate-chat']);
 
 // Formateadores
 const formattedDate = computed(() => {
@@ -39,10 +39,16 @@ const initials = computed(() => {
 // Acciones
 const isProcessing = ref(false);
 
+const navigateToChat = () => {
+  emit('navigate-chat');
+};
+
 const updateStatus = async (newStatus) => {
   isProcessing.value = true;
+  const API_URL = import.meta.env.VITE_API_URL || '/api/citas'; // Use relative path logic
+  
   try {
-    const response = await fetch(`http://localhost:3000/api/citas/${props.cita.id}/status`, {
+    const response = await fetch(`${API_URL}/${props.cita.id}/status`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -55,10 +61,11 @@ const updateStatus = async (newStatus) => {
     // Éxito
     if (newStatus === 'cancelada') {
       alert('La cita ha sido cancelada correctamente.');
-      emit('back'); // Volver a la lista
+      navigateToChat();
     } else {
-      alert('¡Cita confirmada! Se ha enviado la notificación.');
-      emit('confirm'); // Puede refrescar la vista
+      // Confirmada
+      // alert('¡Cita confirmada!'); // Opcional, el usuario pidió "no pasa nada" visualmente intrusivo
+      navigateToChat();
     }
     
   } catch (error) {
@@ -70,7 +77,6 @@ const updateStatus = async (newStatus) => {
 };
 
 const handleConfirm = () => {
-    // Solo mostrar mensaje como pedido, pero igual cambiamos estado para consistencia
     updateStatus('confirmada');
 };
 

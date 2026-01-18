@@ -206,6 +206,7 @@ const handleSendMessage = async (text) => {
       v-if="selectedCita" 
       :cita="selectedCita"
       @back="selectedCita = null"
+      @navigate-chat="selectedCita = null; showCitas = false; showCancelaciones = false"
       @confirm="console.log('Confirmada:', $event)"
       @reschedule="console.log('Reprogramar:', $event)"
       @cancel="console.log('Cancelar:', $event)"
