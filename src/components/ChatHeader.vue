@@ -42,6 +42,8 @@ defineProps({
         <div class="menu-item" @click="selectAgent(1)">Servicio a Cliente</div>
         <div class="menu-item" @click="selectAgent(2)">Agenda</div>
         <div class="menu-item" @click="selectAgent(3)">Reservaciones</div>
+        <div class="menu-separator"></div>
+        <div class="menu-item calendar-option" @click="selectAgent('calendar')">Calendario Médico</div>
       </div>
 
       <div class="avatar-container">
