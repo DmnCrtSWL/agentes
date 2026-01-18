@@ -40,8 +40,13 @@ const activeAgent = computed(() => agents.value[activeAgentId.value]);
 
 // -------------------------------------------------------------
 // CONFIGURACIÓN DE N8N
-// Reemplaza esta URL con la Production URL de tu Webhook de n8n
-const N8N_WEBHOOK_URL = 'https://bambu-cloud.app.n8n.cloud/webhook/agente/servicio-cliente'; 
+const N8N_PROD_URL = 'https://bambu-cloud.app.n8n.cloud/webhook/agente/servicio-cliente';
+const N8N_TEST_URL = 'https://bambu-cloud.app.n8n.cloud/webhook-test/agente/servicio-cliente';
+
+// Selecciona automáticamente la URL según el entorno (dev/prod)
+const N8N_WEBHOOK_URL = import.meta.env.DEV ? N8N_TEST_URL : N8N_PROD_URL;
+
+console.log(`Usando webhook de: ${import.meta.env.DEV ? 'PRUEBA' : 'PRODUCCIÓN'}`);
 // -------------------------------------------------------------
 
 const handleSelectAgent = (id) => {
