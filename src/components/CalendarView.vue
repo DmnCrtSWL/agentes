@@ -4,7 +4,6 @@ import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import esLocale from '@fullcalendar/core/locales/es';
 
 // Estado del modal de detalles
 const selectedEvent = ref(null);
@@ -29,7 +28,7 @@ const closeModal = () => {
 const calendarOptions = ref({
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
   initialView: 'timeGridWeek',
-  locale: esLocale, // Español
+  // locale: 'es', // Comentado temporalmente para depurar importaciones
   headerToolbar: {
     left: 'prev,next today',
     center: 'title',
@@ -38,16 +37,35 @@ const calendarOptions = ref({
   slotMinTime: '08:00:00',
   slotMaxTime: '20:00:00',
   allDaySlot: false,
-  height: '100%', // Use 100% of the container
+  height: 'auto', 
   expandRows: true,
   stickyHeaderDates: true,
   nowIndicator: true,
   eventClick: handleEventClick,
   
-  // Eventos Demo (Aquí conectaríamos la DB luego)
+  // Eventos Demo
   events: [
     { 
       title: 'Juan Pérez - Consulta', 
+      start: new Date(new Date().setHours(10,0,0)), 
+      end: new Date(new Date().setHours(11,0,0)), 
+      extendedProps: { telefono: '5512345678', motivo: 'Dolor Pecho' },
+      backgroundColor: '#00af9c'
+    }
+  ]
+});
+</script>
+
+<template>
+  <div class="calendar-page">
+    <header class="calendar-header">
+      <h1>Agenda Dr. Quiroz</h1>
+      <button class="back-btn" @click="$emit('back')">Volver</button>
+    </header>
+
+    <div class="calendar-wrapper">
+      <FullCalendar :options="calendarOptions" style="height: 100%; min-height: 400px;" />
+    </div>
       start: new Date(new Date().setHours(10,0,0)), 
       end: new Date(new Date().setHours(11,0,0)), 
       extendedProps: { 
