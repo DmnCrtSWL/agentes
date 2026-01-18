@@ -49,10 +49,7 @@ defineProps({
       </div>
       <div class="contact-info">
         <h1 class="contact-name">{{ contactName }}</h1>
-        <div class="status-wrapper">
-          <span class="status-dot"></span>
-          <span class="status">{{ status }}</span>
-        </div>
+        <span class="status">{{ status }}</span>
       </div>
     </div>
     
@@ -124,19 +121,7 @@ defineProps({
   line-height: 1.2;
 }
 
-.status-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  background-color: #44b700; /* WhatsApp green or generic active green */
-  border-radius: 50%;
-  box-shadow: 0 0 2px rgba(0,0,0,0.2);
-}
 
 .status {
   font-size: 13px;
