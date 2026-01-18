@@ -170,6 +170,72 @@ const sendConfirmationEmail = async (to, cita) => {
     }
 };
 
+// Función auxiliar de envío de RECORDATORIO (48h antes)
+const sendReminderEmail = async (to, cita) => {
+    if (!process.env.EMAIL_USER) return;
+
+    const fechaFormat = new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+
+    const mailOptions = {
+        from: `"Clínica Dr. Quiroz" <${process.env.EMAIL_USER}>`,
+        to: to,
+        subject: '⏰ Recordatorio: Tu cita es en 48 horas',
+        html: `
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #f0f0f0;">
+                
+                <!-- Cabecera (Color Ámbar/Naranja para urgencia leve) -->
+                <div style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 30px 20px; text-align: center;">
+                    <div style="background-color: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 15px auto; display: flex; align-items: center; justify-content: center; line-height: 60px; font-size: 30px;">
+                        ⏰
+                    </div>
+                    <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">Recordatorio de Cita</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">Faltan poco menos de 48 horas</p>
+                </div>
+
+                <!-- Contenido -->
+                <div style="padding: 30px; color: #444444;">
+                    <p style="margin-bottom: 20px; font-size: 16px;">Hola <strong>${cita.paciente_nombre}</strong>,</p>
+                    <p style="margin-bottom: 25px; line-height: 1.6; color: #555;">Este es un recordatorio amable de que tienes una cita programada con nosotros próximamente.</p>
+                    
+                    <div style="background-color: #fffbeb; border-left: 4px solid #d97706; padding: 20px; border-radius: 0 8px 8px 0; margin-bottom: 30px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; font-size: 14px; color: #555; width: 30%;"><strong>🗓️ Fecha:</strong></td>
+                                <td style="padding: 8px 0; font-size: 15px; color: #111; font-weight: 600;">${new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-size: 14px; color: #555;"><strong>⏰ Hora:</strong></td>
+                                <td style="padding: 8px 0; font-size: 15px; color: #d97706; font-weight: 700;">${new Date(cita.fecha_hora).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true })}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; font-size: 14px; color: #555;"><strong>👨‍⚕️ Doctor:</strong></td>
+                                <td style="padding: 8px 0; font-size: 15px; color: #111;">Dr. Rubén Quiroz</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 30px;">
+                         <p style="font-size: 14px; color: #555;">Por favor llega 10 minutos antes de tu hora programada.</p>
+                         <p style="font-size: 12px; color: #888; margin-top: 15px;">Si necesitas cancelar o reprogramar, contáctanos lo antes posible.</p>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
+                    <p style="margin: 0; font-weight: 600; color: #334155;">Clínica de Cardiología - Dr. Rubén Quiroz</p>
+                </div>
+            </div>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`⏰ Recordatorio enviado a ${to}`);
+    } catch (error) {
+        console.error('❌ Error enviando recordatorio:', error);
+    }
+};
+
 // Ruta: Crear nueva cita (Incluye envío de correo)
 app.post('/api/citas', async (req, res) => {
     const { paciente_nombre, telefono, email, fecha_hora, motivo } = req.body;
@@ -205,10 +271,10 @@ app.post('/api/citas', async (req, res) => {
 // CRON JOB / PROCESADOR DE CORREOS PENDIENTES
 // ---------------------------------------------------------
 const processPendingEmails = async () => {
-    console.log('🔄 Verificando correos pendientes...');
+    console.log('🔄 Ejecutando Cron Job de Correos...');
     try {
-        // Buscar citas que NO han enviado correo, TIENEN email y NO están canceladas
-        const result = await pool.query(`
+        // 1. Confirmaciones pendientes
+        const confirmaciones = await pool.query(`
             SELECT * FROM citas 
             WHERE email IS NOT NULL 
             AND email_sent = FALSE 
@@ -216,25 +282,47 @@ const processPendingEmails = async () => {
             LIMIT 10
         `);
 
-        if (result.rows.length === 0) {
-            console.log('📭 No hay correos pendientes.');
-            return { count: 0 };
+        if (confirmaciones.rows.length > 0) {
+            console.log(`📬 Enviando ${confirmaciones.rows.length} confirmaciones...`);
+            for (const cita of confirmaciones.rows) {
+                await sendConfirmationEmail(cita.email, cita);
+                await pool.query('UPDATE citas SET email_sent = TRUE WHERE id = $1', [cita.id]);
+                console.log(`✅ Confirmación enviada para Cita #${cita.id}`);
+            }
         }
 
-        console.log(`📬 Encontrados ${result.rows.length} correos pendientes.`);
+        // 2. Recordatorios de 48 horas
+        // Seleccionamos citas que están a 48 horas o menos de suceder (pero todavía en el futuro)
+        const recordatorios = await pool.query(`
+            SELECT * FROM citas 
+            WHERE email IS NOT NULL 
+            AND reminder_sent = FALSE 
+            AND status != 'cancelada'
+            AND fecha_hora <= NOW() + INTERVAL '48 hours'
+            AND fecha_hora > NOW()
+            LIMIT 10
+        `);
 
-        for (const cita of result.rows) {
-            await sendConfirmationEmail(cita.email, cita);
-
-            // Marcar como enviado
-            await pool.query('UPDATE citas SET email_sent = TRUE WHERE id = $1', [cita.id]);
-            console.log(`✅ Correo marcado como enviado para Cita #${cita.id}`);
+        if (recordatorios.rows.length > 0) {
+            console.log(`⏰ Enviando ${recordatorios.rows.length} recordatorios de 48h...`);
+            for (const cita of recordatorios.rows) {
+                await sendReminderEmail(cita.email, cita);
+                await pool.query('UPDATE citas SET reminder_sent = TRUE WHERE id = $1', [cita.id]);
+                console.log(`✅ Recordatorio enviado para Cita #${cita.id}`);
+            }
         }
 
-        return { count: result.rows.length };
+        if (confirmaciones.rows.length === 0 && recordatorios.rows.length === 0) {
+            console.log('📭 No hay correos pendientes (ni confirmaciones ni recordatorios).');
+        }
+
+        return {
+            confirmaciones: confirmaciones.rows.length,
+            recordatorios: recordatorios.rows.length
+        };
 
     } catch (error) {
-        console.error('❌ Error procesando correos pendients:', error);
+        console.error('❌ Error en Cron Job:', error);
         return { error: error.message };
     }
 };
