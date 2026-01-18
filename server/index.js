@@ -18,15 +18,25 @@ const pool = new Pool({
     }
 });
 
-// Ruta: Obtener todas las citas
+// Ruta: Obtener citas activas (no canceladas)
 app.get('/api/citas', async (req, res) => {
     try {
-        // Consulta SQL directa
-        const result = await pool.query('SELECT * FROM citas ORDER BY fecha_hora ASC');
+        const result = await pool.query("SELECT * FROM citas WHERE status != 'cancelada' ORDER BY fecha_hora ASC");
         res.json(result.rows);
     } catch (err) {
         console.error('Error ejecutando query:', err);
         res.status(500).json({ error: 'Error interno del servidor al obtener citas' });
+    }
+});
+
+// Ruta: Obtener citas canceladas
+app.get('/api/cancelaciones', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM citas WHERE status = 'cancelada' ORDER BY deleted_at DESC, fecha_hora ASC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error ejecutando query:', err);
+        res.status(500).json({ error: 'Error interno del servidor al obtener cancelaciones' });
     }
 });
 

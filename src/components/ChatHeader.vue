@@ -41,6 +41,7 @@ defineProps({
       <div v-if="showMenu" class="agent-menu">
         <div class="menu-item" @click="selectAgent(1)">Servicio a Cliente</div>
         <div class="menu-item" @click="selectAgent('citas')">Citas</div>
+        <div class="menu-item" @click="selectAgent('cancelaciones')">Cancelaciones</div>
       </div>
 
       <div class="avatar-container">

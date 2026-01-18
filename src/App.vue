@@ -4,10 +4,12 @@ import ChatHeader from './components/ChatHeader.vue';
 import MessageList from './components/MessageList.vue';
 import ChatInput from './components/ChatInput.vue';
 import CitasList from './components/CitasList.vue';
+import CancelacionesList from './components/CancelacionesList.vue';
 import CitaConfirmation from './components/CitaConfirmation.vue';
 
 const activeAgentId = ref(1);
 const showCitas = ref(false);
+const showCancelaciones = ref(false);
 const selectedCita = ref(null);
 
 const agents = ref({
@@ -58,9 +60,15 @@ const sessionId = ref('session-' + Date.now());
 const handleSelectAgent = async (id) => {
   if (id === 'citas') {
     showCitas.value = true;
+    showCancelaciones.value = false;
     selectedCita.value = null;
+  } else if (id === 'cancelaciones') {
+     showCitas.value = false;
+     showCancelaciones.value = true;
+     selectedCita.value = null;
   } else if (id === 'confirmaciones') {
-    try {
+    // ... existing logic
+     try {
        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
        const res = await fetch(API_URL);
        const data = await res.json();
@@ -80,10 +88,12 @@ const handleSelectAgent = async (id) => {
   } else if (id === 'servicio-cliente') {
     activeAgentId.value = 1;
     showCitas.value = false;
+    showCancelaciones.value = false;
     selectedCita.value = null;
   } else {
     activeAgentId.value = id;
     showCitas.value = false;
+    showCancelaciones.value = false;
     selectedCita.value = null;
   }
 };
@@ -145,6 +155,7 @@ const handleSendMessage = async (text) => {
   
   newMsg.status = 'read';
 };
+
 </script>
 
 <template>
@@ -164,6 +175,14 @@ const handleSendMessage = async (text) => {
       v-else-if="showCitas" 
       @select="selectedCita = $event"
       @back="showCitas = false"
+      @navigate="handleSelectAgent"
+    />
+
+     <!-- VISTA LISTA CANCELACIONES -->
+    <CancelacionesList 
+      v-else-if="showCancelaciones" 
+      @select="selectedCita = $event"
+      @back="showCancelaciones = false"
       @navigate="handleSelectAgent"
     />
 

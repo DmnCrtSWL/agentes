@@ -83,6 +83,7 @@ onUnmounted(() => {
         <div v-if="showMenu" class="absolute top-12 left-0 bg-white rounded-lg shadow-xl border border-gray-100 z-50 min-w-[180px] py-2 overflow-hidden">
           <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('servicio-cliente')">Servicio a Cliente</div>
           <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('citas')">Citas</div>
+          <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('cancelaciones')">Cancelaciones</div>
         </div>
 
         <div>
