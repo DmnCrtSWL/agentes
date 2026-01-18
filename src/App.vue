@@ -54,8 +54,17 @@ const N8N_WEBHOOK_URL = import.meta.env.DEV ? N8N_TEST_URL : N8N_PROD_URL;
 
 console.log(`Usando webhook de: ${import.meta.env.DEV ? 'PRUEBA' : 'PRODUCCIÓN'}`);
 
-// Generar una sesión única al cargar la página
-const sessionId = ref('session-' + Date.now());
+// Generar una sesión única (Persistente en LocalStorage)
+const getSessionId = () => {
+  let stored = localStorage.getItem('chat_session_id');
+  if (!stored) {
+    stored = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('chat_session_id', stored);
+  }
+  return stored;
+};
+
+const sessionId = ref(getSessionId());
 
 const handleSelectAgent = async (id) => {
   if (id === 'citas') {
