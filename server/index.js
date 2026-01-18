@@ -35,6 +35,35 @@ app.get('/', (req, res) => {
     res.send('API de Citas Médicas Funcionando 🚀');
 });
 
+// Ruta: Actualizar estado de una cita
+app.put('/api/citas/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+        let queryText = 'UPDATE citas SET status = $1 WHERE id = $2 RETURNING *';
+        let queryParams = [status, id];
+
+        if (status === 'cancelada') {
+            queryText = 'UPDATE citas SET status = $1, deleted_at = NOW() WHERE id = $2 RETURNING *';
+        } else if (status === 'confirmada') {
+            // Opcional: Si se reactiva, podríamos querer limpiar el deleted_at
+            queryText = 'UPDATE citas SET status = $1, deleted_at = NULL WHERE id = $2 RETURNING *';
+        }
+
+        const result = await pool.query(queryText, queryParams);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Cita no encontrada' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error actualizando cita:', err);
+        res.status(500).json({ error: 'Error al actualizar la cita' });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Backend corriendo en http://localhost:${port}`);
 });

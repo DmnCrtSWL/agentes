@@ -4,9 +4,11 @@ import ChatHeader from './components/ChatHeader.vue';
 import MessageList from './components/MessageList.vue';
 import ChatInput from './components/ChatInput.vue';
 import CitasList from './components/CitasList.vue';
+import CitaConfirmation from './components/CitaConfirmation.vue';
 
 const activeAgentId = ref(1);
 const showCitas = ref(false);
+const selectedCita = ref(null);
 
 const agents = ref({
   1: {
@@ -53,12 +55,36 @@ console.log(`Usando webhook de: ${import.meta.env.DEV ? 'PRUEBA' : 'PRODUCCIÓN'
 // Generar una sesión única al cargar la página
 const sessionId = ref('session-' + Date.now());
 
-const handleSelectAgent = (id) => {
+const handleSelectAgent = async (id) => {
   if (id === 'citas') {
     showCitas.value = true;
+    selectedCita.value = null;
+  } else if (id === 'confirmaciones') {
+    try {
+       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
+       const res = await fetch(API_URL);
+       const data = await res.json();
+       const citas = Array.isArray(data) ? data : (data.data || []);
+       
+       if (citas.length > 0) {
+         // Seleccionamos la primera cita para mostrar en la card
+         selectedCita.value = citas[0];
+       } else {
+         alert('No hay citas disponibles para confirmar.');
+         showCitas.value = true;
+       }
+     } catch (e) {
+       console.error(e);
+       showCitas.value = true;
+     }
+  } else if (id === 'servicio-cliente') {
+    activeAgentId.value = 1;
+    showCitas.value = false;
+    selectedCita.value = null;
   } else {
     activeAgentId.value = id;
     showCitas.value = false;
+    selectedCita.value = null;
   }
 };
 
@@ -123,11 +149,25 @@ const handleSendMessage = async (text) => {
 
 <template>
   <div class="app-container">
-    <CitasList 
-      v-if="showCitas" 
-      @back="showCitas = false"
+    <!-- VISTA DETALLE CITA -->
+    <CitaConfirmation 
+      v-if="selectedCita" 
+      :cita="selectedCita"
+      @back="selectedCita = null"
+      @confirm="console.log('Confirmada:', $event)"
+      @reschedule="console.log('Reprogramar:', $event)"
+      @cancel="console.log('Cancelar:', $event)"
     />
 
+    <!-- VISTA LISTA CITAS -->
+    <CitasList 
+      v-else-if="showCitas" 
+      @select="selectedCita = $event"
+      @back="showCitas = false"
+      @navigate="handleSelectAgent"
+    />
+
+    <!-- VISTA DE CHAT -->
     <template v-else>
       <ChatHeader 
         :contact-name="activeAgent.name" 

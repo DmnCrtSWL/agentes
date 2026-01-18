@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { Menu, ClipboardCheck } from 'lucide-vue-next';
 
 // URL del API de Backend (Express)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
@@ -8,7 +9,23 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas
 const citas = ref([]);
 const loading = ref(true);
 const error = ref(null);
+const showMenu = ref(false);
 let pollingInterval = null;
+
+const emit = defineEmits(['back', 'select', 'navigate']);
+
+const toggleMenu = () => {
+  showMenu.value = !showMenu.value;
+};
+
+const handleMenuOption = (option) => {
+  showMenu.value = false;
+  if (option === 'back' || option === 'servicio-cliente') {
+    emit('back'); // Or emit navigate 'chat'
+  } else {
+    emit('navigate', option);
+  }
+};
 
 const fetchCitas = async (isAutoRefresh = false) => {
   try {
@@ -57,11 +74,23 @@ onUnmounted(() => {
   <div class="h-full flex flex-col bg-gray-50 font-sans">
     <!-- Header -->
     <header class="bg-white px-6 py-5 flex items-center justify-between border-b border-gray-200 shadow-sm sticky top-0 z-20">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Agenda de Citas</h1>
-        <div class="flex items-center gap-2 mt-1">
-          <p class="text-xs text-gray-500">Dr. Rubén Quiroz - Cardiología</p>
-          <span v-if="loading" class="text-xs text-teal-600 animate-pulse font-medium">• Actualizando...</span>
+      <div class="flex items-center gap-4 relative">
+        <button class="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" @click="toggleMenu">
+          <Menu :size="24" />
+        </button>
+
+         <!-- Dropdown Menu -->
+        <div v-if="showMenu" class="absolute top-12 left-0 bg-white rounded-lg shadow-xl border border-gray-100 z-50 min-w-[180px] py-2 overflow-hidden">
+          <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('servicio-cliente')">Servicio a Cliente</div>
+          <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('citas')">Citas</div>
+        </div>
+
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Agenda de Citas</h1>
+          <div class="flex items-center gap-2 mt-1">
+            <p class="text-xs text-gray-500">Dr. Rubén Quiroz - Cardiología</p>
+            <span v-if="loading" class="text-xs text-teal-600 animate-pulse font-medium">• Actualizando...</span>
+          </div>
         </div>
       </div>
       
@@ -133,10 +162,16 @@ onUnmounted(() => {
                 <th class="px-6 py-4">Fecha y Hora</th>
                 <th class="px-6 py-4">Detalles Médicos</th>
                 <th class="px-6 py-4 text-center">Estado</th>
+                <th class="px-6 py-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
-              <tr v-for="cita in citas" :key="cita.id" class="group hover:bg-teal-50/30 transition-colors duration-150">
+              <tr 
+                v-for="cita in citas" 
+                :key="cita.id" 
+                @click="$emit('select', cita)"
+                class="group hover:bg-teal-50/30 transition-colors duration-150 cursor-pointer"
+              >
                 <!-- Paciente Column -->
                 <td class="px-6 py-4">
                   <div class="flex items-center">
@@ -179,10 +214,25 @@ onUnmounted(() => {
 
                 <!-- Status Column -->
                 <td class="px-6 py-4 text-center whitespace-nowrap">
-                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm">
+                  <span v-if="cita.status === 'cancelada' || cita.deleted_at" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
+                    <span class="h-1.5 w-1.5 rounded-full bg-red-500 mr-2"></span>
+                    Cancelada
+                  </span>
+                  <span v-else class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm">
                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-2"></span>
                     Confirmada
                   </span>
+                </td>
+
+                <!-- Actions Column -->
+                <td class="px-6 py-4 text-center">
+                  <button 
+                    @click.stop="$emit('select', cita)" 
+                    class="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                    title="Administrar Cita"
+                  >
+                    <ClipboardCheck :size="20" />
+                  </button>
                 </td>
               </tr>
             </tbody>
