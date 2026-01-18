@@ -6,6 +6,10 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 
+/* Force include styles for Vite production build */
+import '@fullcalendar/core/vdom'; // Important for Vue 3
+
+
 // Estado del modal de detalles
 const selectedEvent = ref(null);
 const showModal = ref(false);
