@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { Menu, ClipboardCheck } from 'lucide-vue-next';
 
 // URL del API de Backend (Express)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
+const API_URL = import.meta.env.VITE_API_URL || '/api/citas'; 
 // Asegúrate de cambiar esto por tu URL real de producción/test
 
 const citas = ref([]);

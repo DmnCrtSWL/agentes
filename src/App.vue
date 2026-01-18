@@ -76,7 +76,7 @@ onMounted(async () => {
   if (confirmId) {
     console.log('🔗 Link de confirmación detectado para Cita ID:', confirmId);
     try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
+        const API_URL = import.meta.env.VITE_API_URL || '/api/citas'; 
         const res = await fetch(API_URL);
         const data = await res.json();
         const citas = Array.isArray(data) ? data : (data.data || []);
@@ -110,7 +110,7 @@ const handleSelectAgent = async (id) => {
   } else if (id === 'confirmaciones') {
     // ... existing logic
      try {
-       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/citas'; 
+       const API_URL = import.meta.env.VITE_API_URL || '/api/citas'; 
        const res = await fetch(API_URL);
        const data = await res.json();
        const citas = Array.isArray(data) ? data : (data.data || []);

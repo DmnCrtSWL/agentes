@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { Menu, ClipboardCheck, AlertCircle, Clock } from 'lucide-vue-next';
 
 // URL del API de Backend (Express)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/cancelaciones'; 
+const API_URL = import.meta.env.VITE_API_URL || '/api/cancelaciones'; 
 
 const citas = ref([]);
 const loading = ref(true);
@@ -47,7 +47,7 @@ const fetchCitas = async (isAutoRefresh = false) => {
     if (!isAutoRefresh) loading.value = true;
     
     // Cambiamos URL a /cancelaciones
-    const response = await fetch('http://localhost:3000/api/cancelaciones');
+    const response = await fetch(API_URL);
     if (!response.ok) throw new Error('Error al obtener cancelaciones');
     
     const data = await response.json();

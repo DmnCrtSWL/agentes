@@ -1,13 +1,16 @@
-const express = require('express');
-const { Pool } = require('pg');
-const cors = require('cors');
-require('dotenv').config();
+import express from 'express';
+import pg from 'pg';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 
+dotenv.config();
+
+const { Pool } = pg;
 const app = express();
-const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Permite peticiones desde tu frontend (localhost:5173)
+app.use(cors());
 app.use(express.json());
 
 // Configuración de la Base de Datos (Neon Postgres)
@@ -16,68 +19,6 @@ const pool = new Pool({
     ssl: {
         rejectUnauthorized: false
     }
-});
-
-// Ruta: Obtener citas activas (no canceladas)
-app.get('/api/citas', async (req, res) => {
-    try {
-        const result = await pool.query("SELECT * FROM citas WHERE status != 'cancelada' ORDER BY fecha_hora ASC");
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error ejecutando query:', err);
-        res.status(500).json({ error: 'Error interno del servidor al obtener citas' });
-    }
-});
-
-// Ruta: Obtener citas canceladas
-app.get('/api/cancelaciones', async (req, res) => {
-    try {
-        const result = await pool.query("SELECT * FROM citas WHERE status = 'cancelada' ORDER BY deleted_at DESC, fecha_hora ASC");
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error ejecutando query:', err);
-        res.status(500).json({ error: 'Error interno del servidor al obtener cancelaciones' });
-    }
-});
-
-// Ruta de prueba
-app.get('/', (req, res) => {
-    res.send('API de Citas Médicas Funcionando 🚀');
-});
-
-// Ruta: Actualizar estado de una cita
-app.put('/api/citas/:id/status', async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    try {
-        let queryText = 'UPDATE citas SET status = $1 WHERE id = $2 RETURNING *';
-        let queryParams = [status, id];
-
-        if (status === 'cancelada') {
-            queryText = 'UPDATE citas SET status = $1, deleted_at = NOW() WHERE id = $2 RETURNING *';
-        } else if (status === 'confirmada') {
-            // Opcional: Si se reactiva, podríamos querer limpiar el deleted_at
-            queryText = 'UPDATE citas SET status = $1, deleted_at = NULL WHERE id = $2 RETURNING *';
-        }
-
-        const result = await pool.query(queryText, queryParams);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Cita no encontrada' });
-        }
-
-        res.json(result.rows[0]);
-    } catch (err) {
-        console.error('Error actualizando cita:', err);
-        res.status(500).json({ error: 'Error al actualizar la cita' });
-    }
-});
-
-const nodemailer = require('nodemailer');
-
-app.listen(port, () => {
-    console.log(`Backend corriendo en http://localhost:${port}`);
 });
 
 // Configuración de Email (Nodemailer - IONOS)
@@ -91,14 +32,15 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Función auxiliar de envío
+// --- Funciones Auxiliares ---
+
 const sendConfirmationEmail = async (to, cita) => {
     if (!process.env.EMAIL_USER) {
         console.warn('⚠️ EMAIL_USER no configurado. Saltando envío de correo.');
         return;
     }
 
-    const fechaFormat = new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    // const fechaFormat = new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
     const mailOptions = {
         from: `"Clínica Dr. Quiroz" <${process.env.EMAIL_USER}>`,
@@ -106,8 +48,6 @@ const sendConfirmationEmail = async (to, cita) => {
         subject: '📅 Confirmación de tu Cita Médica',
         html: `
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #f0f0f0;">
-                
-                <!-- Cabecera -->
                 <div style="background: linear-gradient(135deg, #0d9488 0%, #115e59 100%); padding: 30px 20px; text-align: center;">
                     <div style="background-color: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 15px auto; display: flex; align-items: center; justify-content: center; line-height: 60px; font-size: 30px;">
                         📅
@@ -115,8 +55,6 @@ const sendConfirmationEmail = async (to, cita) => {
                     <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">¡Cita Confirmada!</h1>
                     <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">Tu salud está en buenas manos</p>
                 </div>
-
-                <!-- Contenido -->
                 <div style="padding: 30px; color: #444444;">
                     <p style="margin-bottom: 20px; font-size: 16px;">Hola <strong>${cita.paciente_nombre}</strong>,</p>
                     <p style="margin-bottom: 25px; line-height: 1.6; color: #555;">Nos complace confirmarte que tu cita ha sido agendada exitosamente en nuestro sistema.</p>
@@ -141,21 +79,10 @@ const sendConfirmationEmail = async (to, cita) => {
                             </tr>
                         </table>
                     </div>
-
-                    <div style="text-align: center; margin-top: 30px;">
-                         <p style="font-size: 12px; color: #888; margin-top: 15px;">Si necesitas cancelar o reprogramar, por favor contáctanos con al menos 48 horas de anticipación.</p>
-                    </div>
                 </div>
-
                 <!-- Footer -->
                 <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
                     <p style="margin: 0; font-weight: 600; color: #334155;">Clínica de Cardiología - Dr. Rubén Quiroz</p>
-                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #94a3b8;">Calle Médicos 123, Consultorio 404 • CDMX</p>
-                    <div style="margin-top: 15px;">
-                        <span style="display: inline-block; width: 30px; height: 1px; background-color: #cbd5e1; vertical-align: middle;"></span>
-                        <span style="font-size: 11px; margin: 0 10px; color: #cbd5e1;">CONFIDENCIAL</span>
-                        <span style="display: inline-block; width: 30px; height: 1px; background-color: #cbd5e1; vertical-align: middle;"></span>
-                    </div>
                 </div>
             </div>
         `
@@ -169,11 +96,10 @@ const sendConfirmationEmail = async (to, cita) => {
     }
 };
 
-// Función auxiliar de envío de RECORDATORIO (48h antes)
 const sendReminderEmail = async (to, cita) => {
     if (!process.env.EMAIL_USER) return;
 
-    const fechaFormat = new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    // const fechaFormat = new Date(cita.fecha_hora).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
     const frontendUrl = process.env.FRONTEND_URL || 'https://agentes-theta.vercel.app';
     const confirmLink = `${frontendUrl}/?confirmar_id=${cita.id}`;
 
@@ -183,8 +109,6 @@ const sendReminderEmail = async (to, cita) => {
         subject: '⏰ Recordatorio: Tu cita es en 48 horas - ¡Confirma tu asistencia!',
         html: `
             <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; border: 1px solid #f0f0f0;">
-                
-                <!-- Cabecera (Color Ámbar/Naranja para urgencia leve) -->
                 <div style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 30px 20px; text-align: center;">
                     <div style="background-color: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 15px auto; display: flex; align-items: center; justify-content: center; line-height: 60px; font-size: 30px;">
                         ⏰
@@ -192,8 +116,6 @@ const sendReminderEmail = async (to, cita) => {
                     <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.5px;">Recordatorio de Cita</h1>
                     <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">Faltan poco menos de 48 horas</p>
                 </div>
-
-                <!-- Contenido -->
                 <div style="padding: 30px; color: #444444;">
                     <p style="margin-bottom: 20px; font-size: 16px;">Hola <strong>${cita.paciente_nombre}</strong>,</p>
                     <p style="margin-bottom: 25px; line-height: 1.6; color: #555;">Este es un recordatorio amable de que tienes una cita programada con nosotros próximamente.</p>
@@ -218,11 +140,8 @@ const sendReminderEmail = async (to, cita) => {
                     <div style="text-align: center; margin-top: 30px;">
                          <p style="font-size: 16px; color: #333; margin-bottom: 15px;"><strong>¿Podrás asistir?</strong></p>
                          <a href="${confirmLink}" style="background-color: #d97706; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(217, 119, 6, 0.3);">✅ CONFIRMAR SI ASISTIRÉ</a>
-                         <p style="font-size: 12px; color: #888; margin-top: 20px;">Si necesitas cancelar o reprogramar, contáctanos lo antes posible.</p>
                     </div>
                 </div>
-
-                <!-- Footer -->
                 <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #eeeeee;">
                     <p style="margin: 0; font-weight: 600; color: #334155;">Clínica de Cardiología - Dr. Rubén Quiroz</p>
                 </div>
@@ -239,6 +158,62 @@ const sendReminderEmail = async (to, cita) => {
 };
 
 
+// --- Rutas ---
+
+// Ruta: Obtener citas activas (no canceladas)
+app.get('/api/citas', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM citas WHERE status != 'cancelada' ORDER BY fecha_hora ASC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error ejecutando query:', err);
+        res.status(500).json({ error: 'Error interno del servidor al obtener citas' });
+    }
+});
+
+// Ruta: Obtener citas canceladas
+app.get('/api/cancelaciones', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM citas WHERE status = 'cancelada' ORDER BY deleted_at DESC, fecha_hora ASC");
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error ejecutando query:', err);
+        res.status(500).json({ error: 'Error interno del servidor al obtener cancelaciones' });
+    }
+});
+
+// Ruta de prueba
+app.get('/api', (req, res) => {
+    res.send('API de Citas Médicas Funcionando 🚀');
+});
+
+// Ruta: Actualizar estado de una cita
+app.put('/api/citas/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+        let queryText = 'UPDATE citas SET status = $1 WHERE id = $2 RETURNING *';
+        let queryParams = [status, id];
+
+        if (status === 'cancelada') {
+            queryText = 'UPDATE citas SET status = $1, deleted_at = NOW() WHERE id = $2 RETURNING *';
+        } else if (status === 'confirmada') {
+            queryText = 'UPDATE citas SET status = $1, deleted_at = NULL WHERE id = $2 RETURNING *';
+        }
+
+        const result = await pool.query(queryText, queryParams);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Cita no encontrada' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error actualizando cita:', err);
+        res.status(500).json({ error: 'Error al actualizar la cita' });
+    }
+});
 
 // Ruta: Crear nueva cita (Incluye envío de correo)
 app.post('/api/citas', async (req, res) => {
@@ -260,7 +235,7 @@ app.post('/api/citas', async (req, res) => {
         console.log('✅ Cita creada en DB:', nuevaCita.id);
 
         if (email) {
-            sendConfirmationEmail(email, nuevaCita);
+            await sendConfirmationEmail(email, nuevaCita);
         }
 
         res.status(201).json(nuevaCita);
@@ -272,10 +247,10 @@ app.post('/api/citas', async (req, res) => {
 
 
 // ---------------------------------------------------------
-// CRON JOB / PROCESADOR DE CORREOS PENDIENTES
+// PROCESADOR DE CORREOS PENDIENTES
 // ---------------------------------------------------------
 const processPendingEmails = async () => {
-    console.log('🔄 Ejecutando Cron Job de Correos...');
+    console.log('🔄 Ejecutando Job de Correos...');
     try {
         // 1. Confirmaciones pendientes
         const confirmaciones = await pool.query(`
@@ -296,7 +271,6 @@ const processPendingEmails = async () => {
         }
 
         // 2. Recordatorios de 48 horas
-        // Seleccionamos citas que están a 48 horas o menos de suceder (pero todavía en el futuro)
         const recordatorios = await pool.query(`
             SELECT * FROM citas 
             WHERE email IS NOT NULL 
@@ -317,7 +291,7 @@ const processPendingEmails = async () => {
         }
 
         if (confirmaciones.rows.length === 0 && recordatorios.rows.length === 0) {
-            console.log('📭 No hay correos pendientes (ni confirmaciones ni recordatorios).');
+            console.log('📭 No hay correos pendientes.');
         }
 
         return {
@@ -326,24 +300,29 @@ const processPendingEmails = async () => {
         };
 
     } catch (error) {
-        console.error('❌ Error en Cron Job:', error);
+        console.error('❌ Error en Job:', error);
         return { error: error.message };
     }
 };
 
-// Endpoint para llamar manualmente al cron (útil para n8n o cronjobs externos)
+// Endpoint Cron (Para llamar desde Vercel Cron o externo)
 app.get('/api/cron/process-emails', async (req, res) => {
     const result = await processPendingEmails();
     res.json(result);
 });
 
-// Inicializar Servidor y Cron Interno
-app.listen(port, () => {
-    console.log(`Backend corriendo en http://localhost:${port}`);
+// Exportar app para Vercel
+export default app;
 
-    // Ejecutar cada 10 minutos (600,000 ms) automáticmamente
-    setInterval(processPendingEmails, 10 * 60 * 1000);
-
-    // Ejecutar una vez al inicio
-    processPendingEmails();
-});
+// Soporte para ejecución local (node api/index.js)
+// Verifica si este archivo es el punto de entrada principal
+import { fileURLToPath } from 'url';
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+        console.log(`Backend unificado corriendo en http://localhost:${port}`);
+        // Iniciar cron localmente también
+        setInterval(processPendingEmails, 10 * 60 * 1000);
+        processPendingEmails();
+    });
+}
