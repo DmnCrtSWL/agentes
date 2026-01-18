@@ -180,8 +180,8 @@ app.post('/api/citas', async (req, res) => {
 
     try {
         const result = await pool.query(
-            `INSERT INTO citas (paciente_nombre, telefono, email, fecha_hora, motivo) 
-             VALUES ($1, $2, $3, $4, $5) 
+            `INSERT INTO citas (paciente_nombre, telefono, email, fecha_hora, motivo, email_sent) 
+             VALUES ($1, $2, $3, $4, $5, TRUE) 
              RETURNING *`,
             [paciente_nombre, telefono, email, fecha_hora, motivo]
         );
@@ -189,9 +189,7 @@ app.post('/api/citas', async (req, res) => {
         const nuevaCita = result.rows[0];
         console.log('✅ Cita creada en DB:', nuevaCita.id);
 
-        // Enviar correo si existe email
         if (email) {
-            // No esperamos el await para no retrasar la respuesta de la API
             sendConfirmationEmail(email, nuevaCita);
         }
 
@@ -200,4 +198,60 @@ app.post('/api/citas', async (req, res) => {
         console.error('Error creando cita:', err);
         res.status(500).json({ error: 'Error al crear la cita' });
     }
+});
+
+
+// ---------------------------------------------------------
+// CRON JOB / PROCESADOR DE CORREOS PENDIENTES
+// ---------------------------------------------------------
+const processPendingEmails = async () => {
+    console.log('🔄 Verificando correos pendientes...');
+    try {
+        // Buscar citas que NO han enviado correo, TIENEN email y NO están canceladas
+        const result = await pool.query(`
+            SELECT * FROM citas 
+            WHERE email IS NOT NULL 
+            AND email_sent = FALSE 
+            AND status != 'cancelada'
+            LIMIT 10
+        `);
+
+        if (result.rows.length === 0) {
+            console.log('📭 No hay correos pendientes.');
+            return { count: 0 };
+        }
+
+        console.log(`📬 Encontrados ${result.rows.length} correos pendientes.`);
+
+        for (const cita of result.rows) {
+            await sendConfirmationEmail(cita.email, cita);
+
+            // Marcar como enviado
+            await pool.query('UPDATE citas SET email_sent = TRUE WHERE id = $1', [cita.id]);
+            console.log(`✅ Correo marcado como enviado para Cita #${cita.id}`);
+        }
+
+        return { count: result.rows.length };
+
+    } catch (error) {
+        console.error('❌ Error procesando correos pendients:', error);
+        return { error: error.message };
+    }
+};
+
+// Endpoint para llamar manualmente al cron (útil para n8n o cronjobs externos)
+app.get('/api/cron/process-emails', async (req, res) => {
+    const result = await processPendingEmails();
+    res.json(result);
+});
+
+// Inicializar Servidor y Cron Interno
+app.listen(port, () => {
+    console.log(`Backend corriendo en http://localhost:${port}`);
+
+    // Ejecutar cada 10 minutos (600,000 ms) automáticmamente
+    setInterval(processPendingEmails, 10 * 60 * 1000);
+
+    // Ejecutar una vez al inicio
+    processPendingEmails();
 });
