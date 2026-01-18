@@ -124,7 +124,9 @@ const handleSendMessage = async (text) => {
 
     <!-- VISTA DE CHAT -->
     <template v-else>
+      <!-- Usamos v-if aquí también para seguridad extra, aunque el v-else ya maneja la lógica -->
       <ChatHeader 
+        v-if="activeAgent"
         :contact-name="activeAgent.name" 
         :status="'En línea'"
         :avatar-url="activeAgent.avatar"
@@ -132,10 +134,11 @@ const handleSendMessage = async (text) => {
       />
       
       <MessageList 
+        v-if="activeAgent"
         :messages="activeAgent.messages" 
       />
       
-      <ChatInput @sendMessage="handleSendMessage" />
+      <ChatInput v-if="activeAgent" @sendMessage="handleSendMessage" />
     </template>
   </div>
 </template>
