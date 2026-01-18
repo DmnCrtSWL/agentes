@@ -91,7 +91,7 @@ const handleKeyup = (e) => {
   border: none;
   background: transparent;
   width: 100%;
-  font-size: 15px;
+  font-size: 16px; /* Prevents zoom on iOS */
   padding: 5px; /* internal padding */
   outline: none;
   color: #111B21;
