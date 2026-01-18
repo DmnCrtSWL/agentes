@@ -1,5 +1,5 @@
 <script setup>
-import { Menu, Video, Phone, MoreVertical } from 'lucide-vue-next';
+import { Menu } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 const emit = defineEmits(['selectAgent']);
@@ -54,15 +54,7 @@ defineProps({
     </div>
     
     <div class="right-section">
-      <button class="icon-btn">
-        <Video :size="24" />
-      </button>
-      <button class="icon-btn">
-        <Phone :size="22" />
-      </button>
-      <button class="icon-btn">
-        <MoreVertical :size="22" />
-      </button>
+      <!-- Icons removed -->
     </div>
   </header>
 </template>
