@@ -17,30 +17,27 @@ const agents = ref({
    // Actually simpler to just replace the top block.
    1: {
     id: 1,
-    name: 'Agente 1',
+    name: 'Ana',
     avatar: '/agent-service.png',
-    messages: [
-      { id: 11, text: 'Hola! Soy el Agente de Servicio a Cliente.', time: '10:00 AM', isMine: false, status: 'read' },
-      { id: 12, text: '¿En qué te puedo ayudar hoy?', time: '10:00 AM', isMine: false, status: 'read' }
-    ]
+    messages: []
   },
   2: {
     id: 2,
     name: 'Agente 2',
     avatar: '/agent-agenda.png',
-    messages: [
-      { id: 21, text: 'Hola! Soy el Agente de Agenda.', time: '11:00 AM', isMine: false, status: 'read' },
-      { id: 22, text: '¿Quieres agendar una cita?', time: '11:00 AM', isMine: false, status: 'read' }
-    ]
+    messages: []
   },
   3: {
     id: 3,
     name: 'Agente 3',
     avatar: '/agent-reservations.png',
-    messages: [
-      { id: 31, text: 'Hola! Soy el Agente de Reservaciones.', time: '12:00 PM', isMine: false, status: 'read' },
-      { id: 32, text: '¿Buscas hacer una reservación?', time: '12:01 PM', isMine: false, status: 'read' }
-    ]
+    messages: []
+  },
+  4: {
+    id: 4,
+    name: 'Jessica',
+    avatar: '/agent-jessica.jpg',
+    messages: []
   }
 });
 
@@ -51,10 +48,16 @@ const activeAgent = computed(() => agents.value[activeAgentId.value]);
 const N8N_PROD_URL = 'https://bambu-cloud.app.n8n.cloud/webhook/agente/servicio-cliente';
 const N8N_TEST_URL = 'https://bambu-cloud.app.n8n.cloud/webhook-test/agente/servicio-cliente';
 
-// Selecciona automáticamente la URL según el entorno (dev/prod)
-const N8N_WEBHOOK_URL = import.meta.env.DEV ? N8N_TEST_URL : N8N_PROD_URL;
+// Webhook por defecto (Ana / Servicio a Cliente)
+const N8N_WEBHOOK_SERVICE_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 
+                               (import.meta.env.DEV ? N8N_TEST_URL : N8N_PROD_URL);
 
-console.log(`Usando webhook de: ${import.meta.env.DEV ? 'PRUEBA' : 'PRODUCCIÓN'}`);
+// Webhook para Cotizaciones (Jessica)
+const N8N_WEBHOOK_QUOTES_URL = import.meta.env.VITE_N8N_WEBHOOK_QUOTES_URL || 
+                               'https://bambu-cloud.app.n8n.cloud/webhook/agente/cotizaciones';
+
+console.log('🔗 N8N Service URL:', N8N_WEBHOOK_SERVICE_URL);
+console.log('🔗 N8N Quotes URL:', N8N_WEBHOOK_QUOTES_URL);
 
 // Generar una sesión única (Persistente en LocalStorage)
 const getSessionId = () => {
@@ -90,7 +93,6 @@ onMounted(async () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         } else {
             console.warn('Cita no encontrada en la lista activa');
-            // Opcional: Mostrar alerta
         }
     } catch (e) {
         console.error('Error cargando cita por ID:', e);
@@ -107,6 +109,11 @@ const handleSelectAgent = async (id) => {
      showCitas.value = false;
      showCancelaciones.value = true;
      selectedCita.value = null;
+  } else if (id === 'cotizaciones') {
+    activeAgentId.value = 4; // Jessica
+    showCitas.value = false;
+    showCancelaciones.value = false;
+    selectedCita.value = null;
   } else if (id === 'confirmaciones') {
     // ... existing logic
      try {
@@ -127,7 +134,7 @@ const handleSelectAgent = async (id) => {
        showCitas.value = true;
      }
   } else if (id === 'servicio-cliente') {
-    activeAgentId.value = 1;
+    activeAgentId.value = 1; // Ana
     showCitas.value = false;
     showCancelaciones.value = false;
     selectedCita.value = null;
@@ -139,51 +146,106 @@ const handleSelectAgent = async (id) => {
   }
 };
 
-const sendMessageToN8N = async (text, agentId) => {
+const sendMessageToN8N = async (text, agentId, files = []) => {
   try {
-    const response = await fetch(N8N_WEBHOOK_URL, {
+    // Convert files to base64
+    const filePromises = files.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          resolve({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: reader.result // base64 data URL
+          });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    const filesData = await Promise.all(filePromises);
+    
+    // Determinar URL del webhook según el agente
+    let targetWebhookUrl = N8N_WEBHOOK_SERVICE_URL;
+    if (agentId === 4) { // Jessica (Cotizaciones)
+        targetWebhookUrl = N8N_WEBHOOK_QUOTES_URL;
+    }
+
+    const payload = {
+      message: text,
+      agentId: agentId,
+      sessionId: sessionId.value,
+      files: filesData
+    };
+    
+    console.log(`📤 Enviando mensaje a n8n (Agente ${agentId}):`, {
+      url: targetWebhookUrl,
+      payload: {
+        ...payload,
+        files: filesData.map(f => ({ name: f.name, type: f.type, size: f.size }))
+      }
+    });
+    
+    const response = await fetch(targetWebhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        message: text,
-        agentId: agentId,
-        sessionId: sessionId.value // Usar la sesión persistente
-      })
+      body: JSON.stringify(payload)
     });
 
-    if (!response.ok) throw new Error('Network response was not ok');
+    console.log('📥 Respuesta de n8n:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error en respuesta n8n:', errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
 
     const data = await response.json();
-    return data.reply || data.output || "Lo siento, hubo un error procesando tu mensaje."; // Ajusta según lo que devuelva tu n8n
+    console.log('✅ Datos recibidos de n8n:', data);
+    
+    return data.reply || data.output || "Lo siento, hubo un error procesando tu mensaje.";
   } catch (error) {
-    console.error("Error conectando con n8n:", error);
-    return "Error de conexión con el servidor.";
+    console.error("❌ Error conectando con n8n:", error);
+    return `Error de conexión: ${error.message}`;
   }
 };
 
-const handleSendMessage = async (text) => {
+const handleSendMessage = async (text, files = []) => {
   const currentAgentId = activeAgentId.value;
+  
+  // Create message text with file info if files are attached
+  let displayText = text;
+  if (files.length > 0 && !text.trim()) {
+    displayText = `📎 ${files.length} archivo${files.length > 1 ? 's' : ''} adjunto${files.length > 1 ? 's' : ''}`;
+  } else if (files.length > 0) {
+    displayText = `${text}\n📎 ${files.length} archivo${files.length > 1 ? 's' : ''}`;
+  }
   
   const newMsg = {
     id: Date.now(),
-    text: text,
+    text: displayText,
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     isMine: true,
-    status: 'sent'
+    status: 'sent',
+    files: files.map(f => ({ name: f.name, type: f.type, size: f.size }))
   };
   
   // Add to current agent's messages
   activeAgent.value.messages.push(newMsg);
 
-  // Enviamos a n8n para TODOS los agentes
-  
   // Simular estado "delivered" rápido
   setTimeout(() => { newMsg.status = 'delivered'; }, 500);
 
-  // Llamada a API real
-  const replyText = await sendMessageToN8N(text, currentAgentId);
+  // Llamada a API real con archivos
+  const replyText = await sendMessageToN8N(text, currentAgentId, files);
 
   // Agregar respuesta
   activeAgent.value.messages.push({

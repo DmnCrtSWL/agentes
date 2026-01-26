@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Menu, ClipboardCheck } from 'lucide-vue-next';
+import { ClipboardCheck } from 'lucide-vue-next';
+import HeaderList from './HeaderList.vue';
 
 // URL del API de Backend (Express)
 const API_URL = import.meta.env.VITE_API_URL || '/api/citas'; 
@@ -9,23 +10,9 @@ const API_URL = import.meta.env.VITE_API_URL || '/api/citas';
 const citas = ref([]);
 const loading = ref(true);
 const error = ref(null);
-const showMenu = ref(false);
 let pollingInterval = null;
 
 const emit = defineEmits(['back', 'select', 'navigate']);
-
-const toggleMenu = () => {
-  showMenu.value = !showMenu.value;
-};
-
-const handleMenuOption = (option) => {
-  showMenu.value = false;
-  if (option === 'back' || option === 'servicio-cliente') {
-    emit('back'); // Or emit navigate 'chat'
-  } else {
-    emit('navigate', option);
-  }
-};
 
 const fetchCitas = async (isAutoRefresh = false) => {
   try {
@@ -72,52 +59,14 @@ onUnmounted(() => {
 
 <template>
   <div class="h-full flex flex-col bg-gray-50 font-sans">
-    <!-- Header -->
-    <header class="bg-white px-6 py-5 flex items-center justify-between border-b border-gray-200 shadow-sm sticky top-0 z-20">
-      <div class="flex items-center gap-4 relative">
-        <button class="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" @click="toggleMenu">
-          <Menu :size="24" />
-        </button>
-
-         <!-- Dropdown Menu -->
-        <div v-if="showMenu" class="absolute top-12 left-0 bg-white rounded-lg shadow-xl border border-gray-100 z-50 min-w-[180px] py-2 overflow-hidden">
-          <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('servicio-cliente')">Servicio a Cliente</div>
-          <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('citas')">Citas</div>
-          <div class="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 transition-colors" @click="handleMenuOption('cancelaciones')">Cancelaciones</div>
-        </div>
-
-        <div>
-          <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Agenda de Citas</h1>
-          <div class="flex items-center gap-2 mt-1">
-            <p class="text-xs text-gray-500">Dr. Rubén Quiroz - Cardiología</p>
-            <span v-if="loading" class="text-xs text-teal-600 animate-pulse font-medium">• Actualizando...</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-3">
-        <!-- Botón Actualizar Manual -->
-        <button 
-          @click="fetchCitas(false)" 
-          class="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all active:rotate-180 duration-300"
-          title="Actualizar lista"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
-
-        <button 
-          @click="$emit('back')" 
-          class="group flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-all shadow-sm active:translate-y-0.5"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 group-hover:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Volver al Chat
-        </button>
-      </div>
-    </header>
+    <!-- Header Reusable -->
+    <HeaderList 
+      title="Citas" 
+      subtitle="Dr. Rubén Quiroz - Cardiología"
+      :loading="loading"
+      @refresh="fetchCitas(false)"
+      @navigate="$emit('navigate', $event)"
+    />
 
     <!-- Content -->
     <main class="flex-1 overflow-auto p-4 md:p-8">
